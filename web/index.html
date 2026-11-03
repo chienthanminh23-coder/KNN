@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNN Demo — Iris Dataset</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ======= Loading Overlay ======================================== -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Đang tải WebAssembly module...</p>
+</div>
+
+<!-- ======= App (ẩn cho đến khi WASM load xong) =================== -->
+<div id="app" style="display:none">
+
+  <!-- Header -->
+  <header>
+    <span class="logo">🧠</span>
+    <div>
+      <h1>K-Nearest Neighbors</h1>
+      <p>Thuật toán KNN viết bằng C++ · Chạy trên WebAssembly · Dataset: Iris</p>
+    </div>
+    <span class="badge">C++ → WASM</span>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="container">
+
+    <!-- ======= LEFT PANEL ====================================== -->
+    <aside class="left-panel">
+
+      <!-- Chọn k -->
+      <div class="card">
+        <h2>⚙️ Tham Số</h2>
+        <div class="slider-group">
+          <div class="slider-label">
+            <span style="color:var(--text-muted)">Số láng giềng k</span>
+            <span id="k-display">5</span>
+          </div>
+          <input type="range" id="k-slider" min="1" max="15" value="5" />
+          <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-muted)">
+            <span>1</span><span>15</span>
+          </div>
+        </div>
+
+        <!-- Trục biểu đồ -->
+        <div style="margin-top:20px">
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px">Chọn trục hiển thị scatter plot:</div>
+          <div class="axis-select">
+            <div>
+              <label>Trục X</label>
+              <select id="x-axis">
+                <option value="0">Sepal Length</option>
+                <option value="1">Sepal Width</option>
+                <option value="2" selected>Petal Length</option>
+                <option value="3">Petal Width</option>
+              </select>
+            </div>
+            <div>
+              <label>Trục Y</label>
+              <select id="y-axis">
+                <option value="0">Sepal Length</option>
+                <option value="1">Sepal Width</option>
+                <option value="2">Petal Length</option>
+                <option value="3" selected>Petal Width</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legend màu -->
+        <div class="legend" style="margin-top:16px">
+          <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div>Iris Setosa</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2196F3"></div>Iris Versicolor</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#FF5722"></div>Iris Virginica</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#FFD700;border-radius:2px"></div>Điểm truy vấn ★</div>
+        </div>
+      </div>
+
+      <!-- Nhập điểm mới -->
+      <div class="card">
+        <h2>🔍 Dự Đoán Điểm Mới</h2>
+        <div class="input-grid">
+          <div class="input-group">
+            <label>Sepal Length (cm)</label>
+            <input type="number" id="in-sl" step="0.1" min="0" max="10" value="5.1" placeholder="vd: 5.1"/>
+          </div>
+          <div class="input-group">
+            <label>Sepal Width (cm)</label>
+            <input type="number" id="in-sw" step="0.1" min="0" max="10" value="3.5" placeholder="vd: 3.5"/>
+          </div>
+          <div class="input-group">
+            <label>Petal Length (cm)</label>
+            <input type="number" id="in-pl" step="0.1" min="0" max="10" value="1.4" placeholder="vd: 1.4"/>
+          </div>
+          <div class="input-group">
+            <label>Petal Width (cm)</label>
+            <input type="number" id="in-pw" step="0.1" min="0" max="10" value="0.2" placeholder="vd: 0.2"/>
+          </div>
+        </div>
+        <button class="btn-predict" id="btn-predict" style="margin-top:16px">
+          ⚡ Dự Đoán Ngay
+        </button>
+      </div>
+
+      <!-- Kết quả -->
+      <div class="card">
+        <h2>📊 Kết Quả</h2>
+        <div class="result-box" id="result-box">
+          <div class="result-label">Nhãn dự đoán</div>
+          <div class="result-class">—</div>
+          <div class="result-proba"></div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ======= RIGHT PANEL ===================================== -->
+    <main class="right-panel">
+
+      <!-- Thống kê -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-train">—</div>
+          <div class="stat-lbl">Mẫu huấn luyện</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-test">—</div>
+          <div class="stat-lbl">Mẫu kiểm tra</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-k">—</div>
+          <div class="stat-lbl">Giá trị k</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-acc">—</div>
+          <div class="stat-lbl">Độ chính xác</div>
+        </div>
+      </div>
+
+      <!-- Scatter Plot -->
+      <div class="card" style="flex:1">
+        <h2>📈 Scatter Plot — Dataset Iris</h2>
+        <div class="chart-wrap">
+          <canvas id="scatter-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Bảng k Láng Giềng -->
+      <div class="card">
+        <h2>🔎 K Láng Giềng Gần Nhất</h2>
+        <table class="neighbors-table" id="neighbors-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Khoảng cách (Euclidean)</th>
+              <th>Lớp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:20px">
+              Nhập features và nhấn "Dự Đoán Ngay" để xem kết quả
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+  </div><!-- .container -->
+</div><!-- #app -->
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="iris_data.js"></script>
+<script src="knn.js"></script>   <!-- WASM glue (Emscripten output) -->
+<script src="app.js"></script>
+
+</body>
+</html>
